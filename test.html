@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+</head>
+
+<body>
+    <script>
+        let activeEffect
+        let set = new Set()
+        function effect(fn) {
+            const effectFn = () => {
+                cleanup(effectFn)
+                activeEffect = effectFn
+                fn()
+            }
+            effectFn.deps = []
+        }
+        function cleanup(effectFn) {
+
+        }
+        effect(() => {
+            set.add(activeEffect)
+        })
+
+        // const set = new Set([1])
+        // set.add(2)
+        // // set.forEach((item,index) => {
+        // //     debugger
+        // //     console.log(set);
+        // //     console.log(item);
+        // //     console.log(index);
+        // //     // set.delete(1)
+        // //     set.add(3)
+        // // })
+
+        // var arr = ['a', 'b', 'c']
+        // arr.forEach((item, ind) => {
+        //     arr.pop()
+        //     arr.push('x')
+        //     console.log(item);
+        // })
+
+    </script>
+</body>
+
+</html>

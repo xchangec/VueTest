@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+</head>
+
+<body>
+    <script>
+        let activeEffect
+        function effect(fn) {
+            activeEffect = fn
+            fn()
+        }
+
+        let bucket = new Set()
+
+        let data = { text: 'hello world!' }
+        let obj = new Proxy(data, {
+            get(target, key) {
+                if (activeEffect)
+                    bucket.add(activeEffect)
+                return target[key]
+            },
+            set(target, key, newVal) {
+                target[key] = newVal
+                bucket.forEach(fn => fn())
+                return true
+            }
+        })
+        effect(() => {
+            console.log('run');
+            document.body.innerText = obj.text
+        })
+        setTimeout(() => {
+            obj.text = 'vue3'
+        }, 3000);
+
+    </script>
+</body>
+
+</html>

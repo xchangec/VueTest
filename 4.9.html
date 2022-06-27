@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+</head>
+
+<body>
+    <script>
+        let activeEffect
+        let effectStack = []
+        let bucket = new WeakMap()
+        let data = { foo: 1, bar: 2 }
+
+        let obj = new Proxy(data, {
+            get(target, key) {
+                track(target, key)
+                return target[key]
+            },
+            set(target, key, newVal) {
+                target[key] = newVal
+                trigger(target, key)
+                return true
+            }
+        })
+        function track(target, key) {
+            if (!activeEffect) return
+            let depsMap = bucket.get(target)
+            if (!depsMap) bucket.set(target, depsMap = new Map())
+            let deps = depsMap.get(key)
+            if (!deps) depsMap.set(key, deps = new Set())
+            deps.add(activeEffect)
+            activeEffect.deps.push(deps)
+        }
+        function trigger(target, key) {
+            let depsMap = bucket.get(target)
+            if (!depsMap) return
+            let effects = depsMap.get(key)
+            let effectsToRun = new Set()
+            effects && effects.forEach(effectFn => {
+                if (effectFn !== activeEffect) effectsToRun.add(effectFn)
+            })
+            effectsToRun.forEach(effectFn => {
+                if (effectFn.options.scheduler) {
+                    effectFn.options.scheduler(effectFn)
+                } else {
+                    effectFn()
+                }
+            })
+        }
+
+        function effect(fn, options = {}) {
+            const effectFn = () => {
+                cleanup(effectFn)
+                activeEffect = effectFn
+                effectStack.push(effectFn)
+                const res = fn()
+                effectStack.pop()
+                activeEffect = effectStack[effectStack.length - 1]
+                return res
+            }
+            effectFn.options = options
+            effectFn.deps = []
+            if (!options.lazy) {
+                effectFn()
+            }
+            return effectFn
+        }
+        function cleanup(effectFn) {
+            for (let i = 0; i < effectFn.deps.length; i++) {
+                const deps = effectFn.deps[i];
+                deps.delete(effectFn)
+            }
+            effectFn.deps.length = 0
+        }
+
+        function traverse(value, seen = new Set()) {
+            //如果读取的值是原始值或已被读取过
+            if (typeof value !== 'object' || value === null || seen.has(value)) return
+            //将数据添加到seen中欧冠，代表已被遍历读取过，避免循环引用引起的死循环
+            seen.add(value)
+            //暂不考虑数组等
+            //读取对象的每个值，并递归处理
+            for (const k in value) {
+                traverse(value[k], seen)
+            }
+        }
+        function watch(source, cb) {
+            let getter
+            if (typeof source === "function") {
+                getter = source
+            } else {
+                getter = () => traverse(source)
+            }
+            effect(() => getter(), {
+                scheduler() {
+                    //数据变化回调
+                    cb()
+                }
+            })
+        }
+        //传递对象
+        // watch(obj, () => {
+        //     console.log('变啦');
+        // })
+        
+        //传递函数
+        watch(() => obj.foo, () => {
+            console.log('变啦');
+        })
+        obj.foo++
+        obj.bar++
+    </script>
+</body>
+
+</html>
